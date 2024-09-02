@@ -1,0 +1,13 @@
+
+path: /data1/WJC/TILDA  # dataset root dir
+train: images/train  # train images (relative to 'path') 128 images
+val: images/val  # val images (relative to 'path') 128 images
+test: images/test  # test images (optional)
+nc: 4
+
+# Classes
+names:
+  0: hole
+  1: spot
+  2: wire
+  3: dark_thread

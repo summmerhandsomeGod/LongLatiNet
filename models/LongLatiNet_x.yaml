@@ -1,0 +1,47 @@
+
+# Parameters
+nc: 5  # number of classes
+depth_multiple: 1.33  # model depth multiple
+width_multiple: 1.25  # layer channel multiple
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32
+
+# YOLOv5 v6.0 backbone
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, AdaptiveShake, [64, [4, 9], 6, 2, [1, 4], 2]],  # 0-P1/2            # 0 [3, 32, 320, 320]
+   [-1, 1, AdaptiveShake, [128, [2, 4], 3, 2, [0, 1]]],  # 1-P2/4              # 1 [32, 64, 160, 160]
+   [-1, 3, RecursiveBottleneck, [128]],                                # 2 [64, 64, 160, 160]
+   [-1, 1, AdaptiveShake, [256, [2, 4], 3, 2, [0, 1]]],  # 3-P3/8              # 3 [64, 128, 80, 80]
+   [-1, 6, RecursiveBottleneck, [256]],                                # 4 [128, 128, 80, 80]
+   [-1, 1, AdaptiveShake, [512, [2, 4], 3, 2, [0, 1]]],  # 5-P4/16             # 5 [128, 256, 40, 40]
+   [-1, 9, RecursiveBottleneck, [512]],                                # 6 [256, 256, 40, 40]
+   [-1, 1, AdaptiveShake, [1024, [2, 4], 3, 2, [0, 1]]],  # 7-P5/32            # 7 [256, 512, 20, 20]
+   [-1, 3, RecursiveBottleneck, [1024]],                               # 8 [512, 512, 20, 20]
+   [-1, 1, SPPF_3_9_9, [1024]],  # 9                     # 9 [512, 512, 20, 20]
+  ]
+
+# YOLOv5 v6.0 head
+head:
+  [[-1, 1, Conv, [512, 1, 1]],                        # 10  [512, 256, 20, 20]
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],        # 11  [256, 256, 40, 40]
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P4      # 12  [256+256, 512, 40, 40]
+   [-1, 3, RecursiveBottleneck, [512, False]],  # 13                   # 13  [512, 256, 40, 40]
+
+   [-1, 1, Conv, [256, 1, 1]],                        # 14  [256, 128, 40, 40]
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],        # 15  [128, 128, 80, 80]
+   [[-1, 4], 1, Concat, [1]],  # cat backbone P3      # 16  [128+128, 256, 80, 80]
+   [-1, 3, RecursiveBottleneck, [256, False]],  # 17 (P3/8-small)      # 17  [256, 128, 80, 80]
+
+   [-1, 1, AdaptiveShake, [256, [2, 4], 3, 2, [0, 1]]],                        # 18  [128, 128, 40, 40]
+   [[-1, 14, 6], 1, Concat, [1]],  # cat head P4         # 19  [128+128, 256, 40, 40]
+   [-1, 3, RecursiveBottleneck, [512, False]],  # 20 (P4/16-medium)    # 20  [256, 256, 40, 40]
+
+   [-1, 1, AdaptiveShake, [512, [2, 4], 3, 2, [0, 1]]],                        # 21  [256, 256, 20, 20]
+   [[-1, 10], 1, Concat, [1]],  # cat head P5         # 22  [256+256, 512, 20, 20]
+   [-1, 3, RecursiveBottleneck, [1024, False]],  # 23 (P5/32-large)    # 23  [512, 512, 20, 20]
+
+   [[17, 20, 23], 1, Detect, [nc, anchors]],  # Detect(P3, P4, P5)  # 24  [25200, 85]
+  ]
